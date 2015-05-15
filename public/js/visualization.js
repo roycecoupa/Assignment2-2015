@@ -26,8 +26,24 @@ var svg = d3.select("body").append("svg")
   .append("g")
   .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+var tip = d3.tip()
+  .attr('class', 'd3-tip')
+  .offset([-10, 0])
+  .html(function(d) {
+    return "<strong>Full name:</strong> <span style='color:red'>" + d.full_name +"</span><br>" + 
+    "<strong>Media Count:</strong> <span style='color:red'>" + d.counts.media + "</span>"
+    ;
+  })
+
+var graphData;
+
+svg.call(tip);
+
 //get json object which contains media counts
 d3.json('/igMediaCounts', function(error, data) {
+
+  graphData = data;
+
   //set domain of x to be all the usernames contained in the data
   scaleX.domain(data.users.map(function(d) { return d.username; }));
   //set domain of y to be from 0 to the maximum media count returned
@@ -65,5 +81,34 @@ d3.json('/igMediaCounts', function(error, data) {
     .attr("x", function(d) { return scaleX(d.username); })
     .attr("width", scaleX.rangeBand())
     .attr("y", function(d) { return scaleY(d.counts.media); })
-    .attr("height", function(d) { return height - scaleY(d.counts.media); });
+    .attr("height", function(d) { return height - scaleY(d.counts.media); })
+    .on('mouseover', tip.show)
+    .on('mouseout', tip.hide);
 });
+
+function sortGraph(data)
+{
+    data.users.sort(function(a, b){
+    return a.counts['media'] - b.counts['media'];
+    });
+
+
+    scaleX.domain(data.users.map(function(d) { return d.username; }));
+    scaleY.domain([0, d3.max(data.users, function(d) { return d.counts.media; })]);
+
+    svg.selectAll(".bar")
+    .data(data.users).transition()
+    .attr("class", "bar")
+    .attr("x", function(d) { return scaleX(d.username); })
+    .attr("width", scaleX.rangeBand())
+    .attr("y", function(d) { return scaleY(d.counts.media); })
+    .attr("height", function(d) { return height - scaleY(d.counts.media); });
+
+    $("#sort").text("Sorted");
+    $("#sort").attr("disabled", "disabled");
+
+    svg.selectAll(".x").selectAll("text").data(graphData.users).text(function(d){return d.username});
+
+}
+
+$("#sort").click(function(){sortGraph(graphData)})
